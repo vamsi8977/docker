@@ -1,0 +1,44 @@
+# Docker Commands.
+
+#  Use FROM to download official image as a parent image or can be created from scratch or download from artifactory.
+# Dockerfile must start with FROM only
+FROM  ubuntu:14.04
+# or artifactory.com/docker/anapsix/alpine-java
+# or FROM openjdk:8u131-jre
+
+# install anything on docker image after build
+RUN apt-get -y update && apt-get install -y fortunes
+# if you have multiple
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends \
+  netcat  \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
+# build docker image
+# https://docs.docker.com/engine/reference/commandline/build/
+docker build -it name/version . 
+#docker build -t vieux/apache:2.0 .
+# build with url
+docker build github.com/creack/docker-firefox
+
+# assign ip adress to docker image aafter build
+docker network connect --ip 10.10.36.122 multi-host-network container2
+
+# connect to internet
+First thing to check is run cat /etc/resolv.conf in the docker container. If it has an invalid DNS server, such as nameserver 127.0.x.x, then the container will not be able to resolve the domain names into ip addresses, so ping google.com will fail.
+Second thing to check is run cat /etc/resolv.conf on the host machine. Docker basically copies the host's /etc/resolv.conf to the container everytime a container is started. So if the host's /etc/resolv.conf is wrong, then so will the docker container.
+
+If you have found that the host's /etc/resolv.conf is wrong, then you have 2 options:
+
+Hardcode the DNS server in daemon.json. This is easy, but not ideal if you expect the DNS server to change.
+Fix the hosts's /etc/resolv.conf. This is a little trickier, but it is generated dynamically, and you are not hardcoding the DNS server.
+1. Hardcode DNS server in docker daemon.json
+
+Edit /etc/docker/daemon.json
+{
+    "dns": ["10.1.2.3", "8.8.8.8"]
+}
+Restart the docker daemon for those changes to take effect:
+sudo systemctl restart docker
+Now when you run/start a container, docker will populate /etc/resolv.conf with the values from daemon.json.
